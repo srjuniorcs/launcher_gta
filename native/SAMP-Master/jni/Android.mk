@@ -16,8 +16,8 @@ FILE_LIST += $(wildcard $(LOCAL_PATH)/gui/*.cpp)
 # vendor
 FILE_LIST += $(wildcard $(LOCAL_PATH)/vendor/inih/cpp/INIReader.cpp)
 FILE_LIST += $(wildcard $(LOCAL_PATH)/vendor/inih/ini.c)
-FILE_LIST += $(wildcard $(LOCAL_PATH)/vendor/RakNet/*.cpp)
-FILE_LIST += $(wildcard $(LOCAL_PATH)/vendor/RakNet/SAMP/*.cpp)
+FILE_LIST += $(wildcard $(LOCAL_PATH)/vendor/raknet/*.cpp)
+FILE_LIST += $(wildcard $(LOCAL_PATH)/vendor/raknet/SAMP/*.cpp)
 FILE_LIST += $(wildcard $(LOCAL_PATH)/vendor/imgui/*.cpp)
 FILE_LIST += $(wildcard $(LOCAL_PATH)/vendor/hash/md5.cpp)
 
