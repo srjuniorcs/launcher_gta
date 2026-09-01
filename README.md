@@ -1,32 +1,22 @@
-# GTA SGNT RJ Launcher V3 — DATA Manager
+# GTA SGNT RJ Launcher 1.0.0 — teste de login
 
-Projeto Android pronto para subir no GitHub e compilar pelo GitHub Actions.
+Projeto pronto para subir na raiz do GitHub.
 
-## O que esta V3 faz
-- Consulta ONLINE/OFFLINE e jogadores do servidor, sem exibir IP.
-- Mostra `STATUS DO JOGO: NÃO PRONTO / PRONTO PARA JOGAR`.
-- Botão `PREPARAR JOGO`.
-- Barra de progresso para baixar/carregar, extrair e verificar DATA.
-- Salva o nick.
-- Nas próximas aberturas reconhece a DATA preparada e mostra `JOGAR`.
-- Faz até 3 tentativas na consulta UDP para reduzir falso OFFLINE.
+## O que esta versão testa
+- Status ONLINE/OFFLINE e jogadores do servidor SGNT.
+- STATUS DO JOGO: NÃO PRONTO / PRONTO PARA JOGAR.
+- Preparação e extração da DATA bootstrap.
+- Nick salvo.
+- Botão JOGAR tenta abrir, nesta ordem: ALYN, cliente com.rockstargames.gtasa e Eagle.
+- Envia nick e servidor fixo por extras + samp://.
 
-## DATA real
-No arquivo:
-`app/src/main/java/br/com/gtasgntrj/launcher/MainActivity.java`
-
-Existe:
-`private static final String DATA_URL = "";`
-
-Cole ali um **link direto para um arquivo .zip**. Não use página do MediaFire/GitHub; precisa ser o URL que baixa o ZIP diretamente.
-
-Enquanto `DATA_URL` estiver vazio, o APK usa `assets/sgnt_bootstrap_data.zip` para permitir testar TODO o fluxo de `NÃO PRONTO -> PREPARAR -> EXTRAIR -> PRONTO`. Esse pacote bootstrap NÃO é a DATA completa do GTA.
-
-## Importante sobre JOGAR
-A V3 implementa o gerenciador de DATA, mas o cliente SA:MP próprio ainda não foi incorporado ao APK. O botão JOGAR mantém a ponte temporária com Eagle quando instalado. A integração nativa do cliente é uma etapa separada.
+## Importante
+Esta build é o teste de ligação do launcher com um cliente já instalado. Ela ainda NÃO incorpora os binários do GTA/SA:MP dentro do mesmo APK. O repositório SAMP-MOBILE fornecido contém a source C++ da libsamp, mas não contém o projeto Java completo do GTASA necessário para recompilar tudo como um único aplicativo sem reaproveitar binários proprietários.
 
 ## GitHub Actions
 1. Extraia este ZIP.
-2. Envie o conteúdo da pasta para a raiz do repositório.
-3. Abra Actions > Build SGNT Launcher APK > Run workflow.
-4. Baixe o artifact e instale `app-debug.apk`.
+2. Suba TODO o conteúdo na raiz do repositório.
+3. Abra Actions > Gerar APK GTA SGNT > Run workflow.
+4. Baixe o artifact e instale app-debug.apk.
+
+Versão do app: 1.0.0

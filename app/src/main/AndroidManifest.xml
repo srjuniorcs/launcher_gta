@@ -3,7 +3,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <queries>
+        <package android:name="ro.alyn_sampmobile.game" />
+        <package android:name="com.rockstargames.gtasa" />
         <package android:name="com.eaglevision.samp" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="samp" />
+        </intent>
     </queries>
 
     <application

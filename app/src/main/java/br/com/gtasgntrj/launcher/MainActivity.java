@@ -53,9 +53,13 @@ public class MainActivity extends Activity {
     private static final String DATA_URL = "";
     private static final int DATA_VERSION = 1;
 
-    // Ponte temporária até o cliente SA:MP próprio ser integrado ao mesmo APK.
-    private static final String GAME_PACKAGE = "com.eaglevision.samp";
-    private static final String GAME_ACTIVITY = "com.eaglevision.samp.launcher.activity.CheckActivity";
+    // Clientes suportados para o teste de login. O launcher tenta na ordem abaixo.
+    // Quando o cliente nativo for incorporado ao mesmo pacote, esta ponte deixa de ser necessária.
+    private static final String[][] GAME_CLIENTS = new String[][] {
+            {"ro.alyn_sampmobile.game", "ro.alyn_sampmobile.game.SAMP"},
+            {"com.rockstargames.gtasa", "com.rockstargames.gtasa.GTASA"},
+            {"com.eaglevision.samp", "com.eaglevision.samp.launcher.activity.CheckActivity"}
+    };
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private SharedPreferences prefs;
@@ -297,7 +301,7 @@ public class MainActivity extends Activity {
         c.setConnectTimeout(15000);
         c.setReadTimeout(30000);
         c.setInstanceFollowRedirects(true);
-        c.setRequestProperty("User-Agent", "GTA-SGNT-RJ-Launcher/3.0");
+        c.setRequestProperty("User-Agent", "GTA-SGNT-RJ-Launcher/1.0.0");
         c.connect();
         if (c.getResponseCode() < 200 || c.getResponseCode() >= 300) throw new Exception("HTTP " + c.getResponseCode());
         long total = c.getContentLengthLong();
@@ -366,19 +370,44 @@ public class MainActivity extends Activity {
         }
         if (!isGameReady()) { refreshGameState(); return; }
         prefs.edit().putString("nickname", nick).apply();
-        Intent game = new Intent();
-        game.setComponent(new ComponentName(GAME_PACKAGE, GAME_ACTIVITY));
-        game.putExtra("nickname", nick); game.putExtra("nick", nick);
-        game.putExtra("server_ip", SERVER_IP); game.putExtra("ip", SERVER_IP);
-        game.putExtra("server_port", SERVER_PORT); game.putExtra("port", SERVER_PORT);
-        game.setData(Uri.parse("samp://" + SERVER_IP + ":" + SERVER_PORT));
-        try {
-            startActivity(game);
-        } catch (Exception e) {
-            Intent fallback = getPackageManager().getLaunchIntentForPackage(GAME_PACKAGE);
-            if (fallback != null) startActivity(fallback);
-            else Toast.makeText(this, "DATA pronta. Cliente SA:MP próprio é a próxima integração.", Toast.LENGTH_LONG).show();
+        // Tenta abrir diretamente um cliente compatível já instalado no aparelho.
+        // Enviamos várias chaves de extras porque launchers/clientes diferentes usam nomes diferentes.
+        for (String[] client : GAME_CLIENTS) {
+            String pkg = client[0];
+            String activity = client[1];
+            try {
+                Intent game = new Intent(Intent.ACTION_VIEW);
+                game.setComponent(new ComponentName(pkg, activity));
+                game.putExtra("nickname", nick);
+                game.putExtra("nick", nick);
+                game.putExtra("player_name", nick);
+                game.putExtra("server_ip", SERVER_IP);
+                game.putExtra("ip", SERVER_IP);
+                game.putExtra("host", SERVER_IP);
+                game.putExtra("server_port", SERVER_PORT);
+                game.putExtra("port", SERVER_PORT);
+                game.setData(Uri.parse("samp://" + SERVER_IP + ":" + SERVER_PORT));
+                startActivity(game);
+                return;
+            } catch (Exception ignored) {
+                try {
+                    Intent fallback = getPackageManager().getLaunchIntentForPackage(pkg);
+                    if (fallback != null) {
+                        fallback.putExtra("nickname", nick);
+                        fallback.putExtra("nick", nick);
+                        fallback.putExtra("server_ip", SERVER_IP);
+                        fallback.putExtra("server_port", SERVER_PORT);
+                        fallback.setData(Uri.parse("samp://" + SERVER_IP + ":" + SERVER_PORT));
+                        startActivity(fallback);
+                        return;
+                    }
+                } catch (Exception ignored2) { }
+            }
         }
+
+        Toast.makeText(this,
+                "DATA pronta, mas nenhum cliente GTA/SA:MP compatível foi encontrado no aparelho.",
+                Toast.LENGTH_LONG).show();
     }
 
     private void refreshServer() {
