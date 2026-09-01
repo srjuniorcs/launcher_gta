@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="sgnt_black">#080808</color>
+    <color name="sgnt_panel">#141414</color>
+    <color name="sgnt_red">#E10600</color>
+    <color name="sgnt_red_dark">#8E0000</color>
+    <color name="sgnt_white">#FFFFFF</color>
+    <color name="sgnt_gray">#A7A7A7</color>
+</resources>
