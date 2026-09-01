@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Baixar projeto
         uses: actions/checkout@v4
@@ -17,6 +17,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: Dependencias do NDK r14b
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libncurses5 libtinfo5
 
       - name: Android SDK
         uses: android-actions/setup-android@v3
