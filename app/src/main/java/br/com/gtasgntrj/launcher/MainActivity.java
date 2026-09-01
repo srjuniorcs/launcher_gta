@@ -403,10 +403,14 @@ public class MainActivity extends Activity {
         byte[] req = out.toByteArray();
         DatagramSocket socket = new DatagramSocket(); socket.setSoTimeout(1500); socket.send(new DatagramPacket(req, req.length, addr, port));
         byte[] buf = new byte[4096]; DatagramPacket response = new DatagramPacket(buf, buf.length); socket.receive(response); socket.close();
-        if (response.getLength() < 18) throw new Exception("Resposta inválida");
-        ByteBuffer bb = ByteBuffer.wrap(response.getData(), 11, response.getLength()-11).order(ByteOrder.LITTLE_ENDIAN);
-        if (bb.get() != 'i') throw new Exception("Resposta inválida");
-        bb.get(); int players = bb.getShort() & 0xFFFF; int maxPlayers = bb.getShort() & 0xFFFF;
+        if (response.getLength() < 16) throw new Exception("Resposta inválida");
+        byte[] data = response.getData();
+        if (data[0] != 'S' || data[1] != 'A' || data[2] != 'M' || data[3] != 'P' || data[10] != 'i')
+            throw new Exception("Resposta inválida");
+        ByteBuffer bb = ByteBuffer.wrap(data, 11, response.getLength() - 11).order(ByteOrder.LITTLE_ENDIAN);
+        bb.get(); // passworded: 0 ou 1
+        int players = bb.getShort() & 0xFFFF;
+        int maxPlayers = bb.getShort() & 0xFFFF;
         return new ServerInfo(players, maxPlayers);
     }
 
