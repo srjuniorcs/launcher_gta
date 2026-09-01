@@ -6,15 +6,19 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,13 +30,15 @@ import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
+    // Fica somente no código. O IP NÃO aparece na tela do launcher.
     private static final String SERVER_IP = "51.222.193.109";
     private static final int SERVER_PORT = 7777;
+
+    // Temporário enquanto o cliente próprio ainda não está incorporado.
     private static final String GAME_PACKAGE = "com.eaglevision.samp";
     private static final String GAME_ACTIVITY = "com.eaglevision.samp.launcher.activity.CheckActivity";
 
@@ -45,110 +51,154 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(Color.BLACK);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+
         prefs = getSharedPreferences("sgnt_launcher", MODE_PRIVATE);
         setContentView(buildUi());
         refreshServer();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (statusText != null) refreshServer();
+    }
+
     private View buildUi() {
-        int pad = dp(20);
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(pad, dp(18), pad, dp(20));
-        root.setBackgroundColor(Color.rgb(8, 8, 8));
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(Color.BLACK);
 
-        ImageView logo = new ImageView(this);
-        logo.setImageResource(br.com.gtasgntrj.launcher.R.drawable.sgnt_logo);
-        logo.setAdjustViewBounds(true);
-        root.addView(logo, new LinearLayout.LayoutParams(-1, dp(230)));
+        ImageView background = new ImageView(this);
+        background.setImageResource(R.drawable.sgnt_background);
+        background.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        root.addView(background, new FrameLayout.LayoutParams(-1, -1));
 
-        TextView title = text("GTA SGNT RJ", 27, Color.WHITE, true);
-        title.setGravity(Gravity.CENTER);
-        root.addView(title, fullWrap());
+        View shade = new View(this);
+        GradientDrawable shadeDrawable = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x22000000, 0x66000000, 0xF4000000});
+        shade.setBackground(shadeDrawable);
+        root.addView(shade, new FrameLayout.LayoutParams(-1, -1));
 
-        TextView subtitle = text("SÃO GONÇALO • NITERÓI • RJ", 12, Color.rgb(225, 6, 0), true);
-        subtitle.setGravity(Gravity.CENTER);
-        root.addView(subtitle, fullWrap());
-        addGap(root, 18);
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setVerticalScrollBarEnabled(false);
+        root.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
 
-        LinearLayout serverCard = card();
-        TextView serverTitle = text("SERVIDOR OFICIAL", 13, Color.rgb(167,167,167), true);
-        serverCard.addView(serverTitle, fullWrap());
-        TextView address = text(SERVER_IP + ":" + SERVER_PORT, 18, Color.WHITE, true);
-        serverCard.addView(address, fullWrap());
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setGravity(Gravity.CENTER_HORIZONTAL);
+        content.setPadding(dp(22), dp(44), dp(22), dp(26));
+        scroll.addView(content, new ScrollView.LayoutParams(-1, -1));
 
-        LinearLayout statusRow = new LinearLayout(this);
-        statusRow.setOrientation(LinearLayout.HORIZONTAL);
-        statusRow.setGravity(Gravity.CENTER_VERTICAL);
-        statusText = text("● VERIFICANDO...", 13, Color.rgb(225,6,0), true);
-        playersText = text("--/-- jogadores", 13, Color.LTGRAY, false);
-        statusRow.addView(statusText, new LinearLayout.LayoutParams(0, -2, 1));
-        statusRow.addView(playersText, new LinearLayout.LayoutParams(-2, -2));
-        serverCard.addView(statusRow, fullWrap());
-        root.addView(serverCard, fullWrap());
-        addGap(root, 14);
+        // Espaço para deixar a arte respirar, mantendo o visual do fundo como protagonista.
+        Space hero = new Space(this);
+        content.addView(hero, new LinearLayout.LayoutParams(1, 0, 1.0f));
 
-        TextView nickLabel = text("SEU NICK", 12, Color.rgb(167,167,167), true);
-        root.addView(nickLabel, fullWrap());
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(18), dp(18), dp(18), dp(18));
+        panel.setBackground(roundGradient(0xD9131313, 0xF0080808, 22, 0x55E10600));
+        content.addView(panel, new LinearLayout.LayoutParams(-1, -2));
+
+        LinearLayout onlineRow = new LinearLayout(this);
+        onlineRow.setOrientation(LinearLayout.HORIZONTAL);
+        onlineRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        LinearLayout onlineLeft = new LinearLayout(this);
+        onlineLeft.setOrientation(LinearLayout.VERTICAL);
+        TextView serverLabel = text("SERVIDOR OFICIAL", 11, 0xFFBDBDBD, true);
+        statusText = text("● VERIFICANDO...", 15, 0xFFFF3B30, true);
+        onlineLeft.addView(serverLabel);
+        onlineLeft.addView(statusText);
+
+        playersText = text("--/--", 22, Color.WHITE, true);
+        playersText.setGravity(Gravity.END);
+        TextView playersLabel = text("JOGADORES ONLINE", 9, 0xFF9B9B9B, true);
+        playersLabel.setGravity(Gravity.END);
+        LinearLayout onlineRight = new LinearLayout(this);
+        onlineRight.setOrientation(LinearLayout.VERTICAL);
+        onlineRight.setGravity(Gravity.END);
+        onlineRight.addView(playersText);
+        onlineRight.addView(playersLabel);
+
+        onlineRow.addView(onlineLeft, new LinearLayout.LayoutParams(0, -2, 1f));
+        onlineRow.addView(onlineRight, new LinearLayout.LayoutParams(-2, -2));
+        onlineRow.setOnClickListener(v -> refreshServer());
+        panel.addView(onlineRow, fullWrap());
+
+        addGap(panel, 18);
+        TextView nickLabel = text("SEU NICK", 10, 0xFFBDBDBD, true);
+        panel.addView(nickLabel, fullWrap());
+        addGap(panel, 6);
+
         nickInput = new EditText(this);
         nickInput.setSingleLine(true);
         nickInput.setTextColor(Color.WHITE);
-        nickInput.setHintTextColor(Color.DKGRAY);
+        nickInput.setHintTextColor(0xFF686868);
         nickInput.setHint("Ex.: Junior_SGNT");
         nickInput.setTextSize(16);
-        nickInput.setPadding(dp(14), 0, dp(14), 0);
-        nickInput.setBackground(makeRounded(Color.rgb(20,20,20), Color.rgb(70,70,70), 12));
+        nickInput.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        nickInput.setPadding(dp(16), 0, dp(16), 0);
+        nickInput.setBackground(rounded(0xE6181818, 0xFF555555, 14));
         nickInput.setText(prefs.getString("nickname", ""));
-        root.addView(nickInput, new LinearLayout.LayoutParams(-1, dp(52)));
-        addGap(root, 14);
+        panel.addView(nickInput, new LinearLayout.LayoutParams(-1, dp(56)));
 
-        Button play = button("JOGAR AGORA", true);
+        addGap(panel, 14);
+        Button play = new Button(this);
+        play.setText("JOGAR");
+        play.setTextColor(Color.WHITE);
+        play.setTextSize(16);
+        play.setTypeface(Typeface.DEFAULT_BOLD);
+        play.setAllCaps(false);
+        play.setGravity(Gravity.CENTER);
+        play.setBackground(roundGradient(0xFFE10600, 0xFF9D0000, 16, 0xFFFF4A45));
         play.setOnClickListener(v -> play());
-        root.addView(play, new LinearLayout.LayoutParams(-1, dp(58)));
-        addGap(root, 10);
+        panel.addView(play, new LinearLayout.LayoutParams(-1, dp(60)));
 
-        Button refresh = button("ATUALIZAR STATUS", false);
-        refresh.setOnClickListener(v -> refreshServer());
-        root.addView(refresh, new LinearLayout.LayoutParams(-1, dp(48)));
-        addGap(root, 20);
+        addGap(panel, 12);
+        TextView hint = text("Toque no status para atualizar", 10, 0xFF757575, false);
+        hint.setGravity(Gravity.CENTER);
+        panel.addView(hint, fullWrap());
 
-        TextView socialLabel = text("REDES OFICIAIS • @gtasaogoncalo", 12, Color.LTGRAY, true);
-        socialLabel.setGravity(Gravity.CENTER);
-        root.addView(socialLabel, fullWrap());
-        addGap(root, 8);
+        addGap(content, 18);
+        LinearLayout socials = new LinearLayout(this);
+        socials.setOrientation(LinearLayout.HORIZONTAL);
+        socials.setGravity(Gravity.CENTER);
+        socials.addView(social("INSTAGRAM", "https://instagram.com/gtasaogoncalo"), weighted());
+        socials.addView(social("TIKTOK", "https://www.tiktok.com/@gtasaogoncalo"), weighted());
+        socials.addView(social("YOUTUBE", "https://www.youtube.com/@gtasaogoncalo"), weighted());
+        content.addView(socials, fullWrap());
 
-        LinearLayout socialRow = new LinearLayout(this);
-        socialRow.setOrientation(LinearLayout.HORIZONTAL);
-        socialRow.setGravity(Gravity.CENTER);
-        Button insta = smallButton("INSTAGRAM");
-        insta.setOnClickListener(v -> openUrl("https://instagram.com/gtasaogoncalo"));
-        Button tiktok = smallButton("TIKTOK");
-        tiktok.setOnClickListener(v -> openUrl("https://www.tiktok.com/@gtasaogoncalo"));
-        Button youtube = smallButton("YOUTUBE");
-        youtube.setOnClickListener(v -> openUrl("https://www.youtube.com/@gtasaogoncalo"));
-        socialRow.addView(insta, weighted());
-        socialRow.addView(tiktok, weighted());
-        socialRow.addView(youtube, weighted());
-        root.addView(socialRow, fullWrap());
-
-        addGap(root, 16);
-        TextView footer = text("GTA SGNT RJ • Launcher oficial", 11, Color.DKGRAY, false);
+        addGap(content, 12);
+        TextView footer = text("@gtasaogoncalo  •  GTA SGNT RJ", 10, 0xFF777777, false);
         footer.setGravity(Gravity.CENTER);
-        root.addView(footer, fullWrap());
+        content.addView(footer, fullWrap());
+
         return root;
+    }
+
+    private TextView social(String label, String url) {
+        TextView t = text(label, 10, 0xFFD9D9D9, true);
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(dp(5), dp(10), dp(5), dp(10));
+        t.setBackground(rounded(0x66151515, 0x44555555, 12));
+        t.setOnClickListener(v -> openUrl(url));
+        return t;
     }
 
     private void play() {
         String nick = nickInput.getText().toString().trim();
-        if (nick.length() < 3) {
-            Toast.makeText(this, "Digite seu nick antes de jogar.", Toast.LENGTH_SHORT).show();
+        if (!nick.matches("[A-Za-z0-9_]{3,24}")) {
+            Toast.makeText(this, "Use um nick de 3 a 24 caracteres (letras, números e _).", Toast.LENGTH_LONG).show();
             return;
         }
         prefs.edit().putString("nickname", nick).apply();
 
-        // Integração preparada para o cliente-base. Ao incorporar o motor do cliente
-        // no mesmo APK, esta chamada pode ser apontada diretamente para a Activity do jogo.
         Intent game = new Intent();
         game.setComponent(new ComponentName(GAME_PACKAGE, GAME_ACTIVITY));
         game.putExtra("nickname", nick);
@@ -158,6 +208,7 @@ public class MainActivity extends Activity {
         game.putExtra("server_port", SERVER_PORT);
         game.putExtra("port", SERVER_PORT);
         game.setData(Uri.parse("samp://" + SERVER_IP + ":" + SERVER_PORT));
+
         try {
             startActivity(game);
         } catch (Exception e) {
@@ -169,7 +220,7 @@ public class MainActivity extends Activity {
                 startActivity(fallback);
             } else {
                 Toast.makeText(this,
-                        "Cliente SA:MP ainda não integrado nesta versão de desenvolvimento.",
+                        "Cliente do GTA SGNT ainda será integrado ao APK.",
                         Toast.LENGTH_LONG).show();
             }
         }
@@ -177,21 +228,21 @@ public class MainActivity extends Activity {
 
     private void refreshServer() {
         statusText.setText("● VERIFICANDO...");
-        statusText.setTextColor(Color.rgb(225,6,0));
-        playersText.setText("--/-- jogadores");
+        statusText.setTextColor(0xFFFF3B30);
+        playersText.setText("--/--");
         executor.execute(() -> {
             try {
                 ServerInfo info = queryServer(SERVER_IP, SERVER_PORT);
                 runOnUiThread(() -> {
                     statusText.setText("● ONLINE");
-                    statusText.setTextColor(Color.rgb(40, 200, 90));
-                    playersText.setText(info.players + "/" + info.maxPlayers + " jogadores");
+                    statusText.setTextColor(0xFF35D46F);
+                    playersText.setText(info.players + "/" + info.maxPlayers);
                 });
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     statusText.setText("● OFFLINE");
-                    statusText.setTextColor(Color.rgb(225,6,0));
-                    playersText.setText("não respondeu");
+                    statusText.setTextColor(0xFFFF3B30);
+                    playersText.setText("0/0");
                 });
             }
         });
@@ -201,6 +252,7 @@ public class MainActivity extends Activity {
         InetAddress addr = InetAddress.getByName(ip);
         byte[] ipBytes = addr.getAddress();
         if (ipBytes.length != 4) throw new IllegalArgumentException("IPv4 necessário");
+
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.write(new byte[]{'S','A','M','P'});
         out.write(ipBytes);
@@ -209,15 +261,17 @@ public class MainActivity extends Activity {
         out.write('i');
         byte[] request = out.toByteArray();
         byte[] buffer = new byte[2048];
+
         try (DatagramSocket socket = new DatagramSocket()) {
-            socket.setSoTimeout(1800);
+            socket.setSoTimeout(2200);
             socket.send(new DatagramPacket(request, request.length, addr, port));
             DatagramPacket response = new DatagramPacket(buffer, buffer.length);
             socket.receive(response);
             int len = response.getLength();
             if (len < 17) throw new IllegalStateException("Resposta inválida");
+
             ByteBuffer bb = ByteBuffer.wrap(buffer, 11, len - 11).order(ByteOrder.LITTLE_ENDIAN);
-            bb.get(); // passworded
+            bb.get();
             int players = bb.getShort() & 0xFFFF;
             int maxPlayers = bb.getShort() & 0xFFFF;
             int hostnameLen = bb.getInt();
@@ -234,62 +288,52 @@ public class MainActivity extends Activity {
         catch (Exception ignored) { Toast.makeText(this, url, Toast.LENGTH_SHORT).show(); }
     }
 
-    private LinearLayout card() {
-        LinearLayout v = new LinearLayout(this);
-        v.setOrientation(LinearLayout.VERTICAL);
-        v.setPadding(dp(16), dp(14), dp(16), dp(14));
-        v.setBackground(makeRounded(Color.rgb(20,20,20), Color.rgb(70,15,15), 14));
-        return v;
-    }
-
-    private android.graphics.drawable.GradientDrawable makeRounded(int fill, int stroke, int radiusDp) {
-        android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
+    private GradientDrawable rounded(int fill, int stroke, int radiusDp) {
+        GradientDrawable d = new GradientDrawable();
         d.setColor(fill);
         d.setCornerRadius(dp(radiusDp));
         d.setStroke(dp(1), stroke);
         return d;
     }
 
-    private TextView text(String s, int sp, int color, boolean bold) {
+    private GradientDrawable roundGradient(int top, int bottom, int radiusDp, int stroke) {
+        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{top, bottom});
+        d.setCornerRadius(dp(radiusDp));
+        d.setStroke(dp(1), stroke);
+        return d;
+    }
+
+    private TextView text(String value, int sp, int color, boolean bold) {
         TextView t = new TextView(this);
-        t.setText(s);
+        t.setText(value);
         t.setTextSize(sp);
         t.setTextColor(color);
         if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
         return t;
     }
 
-    private Button button(String label, boolean primary) {
-        Button b = new Button(this);
-        b.setText(label);
-        b.setTextColor(Color.WHITE);
-        b.setTextSize(15);
-        b.setTypeface(Typeface.DEFAULT_BOLD);
-        b.setAllCaps(false);
-        b.setBackground(makeRounded(primary ? Color.rgb(225,6,0) : Color.rgb(20,20,20), primary ? Color.rgb(255,60,55) : Color.rgb(80,80,80), 12));
-        return b;
+    private LinearLayout.LayoutParams fullWrap() {
+        return new LinearLayout.LayoutParams(-1, -2);
     }
 
-    private Button smallButton(String label) {
-        Button b = button(label, false);
-        b.setTextSize(10);
-        return b;
-    }
-
-    private LinearLayout.LayoutParams fullWrap() { return new LinearLayout.LayoutParams(-1, -2); }
     private LinearLayout.LayoutParams weighted() {
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(44), 1);
-        p.setMargins(dp(3), 0, dp(3), 0);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1f);
+        p.setMargins(dp(4), 0, dp(4), 0);
         return p;
     }
-    private void addGap(LinearLayout v, int dp) {
+
+    private void addGap(LinearLayout parent, int value) {
         Space s = new Space(this);
-        v.addView(s, new LinearLayout.LayoutParams(1, dp(dp)));
+        parent.addView(s, new LinearLayout.LayoutParams(1, dp(value)));
     }
-    private int dp(int value) { return (int)(value * getResources().getDisplayMetrics().density + 0.5f); }
+
+    private int dp(int value) {
+        return (int)(value * getResources().getDisplayMetrics().density + 0.5f);
+    }
 
     private static class ServerInfo {
-        final int players, maxPlayers;
+        final int players;
+        final int maxPlayers;
         final String hostname;
         ServerInfo(int players, int maxPlayers, String hostname) {
             this.players = players;

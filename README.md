@@ -1,27 +1,28 @@
-# GTA SGNT RJ Launcher
+# GTA SGNT RJ Launcher V2
 
-Projeto Android original para o GTA SGNT RJ.
+Versão visual V2 do launcher oficial GTA SGNT RJ.
 
-## Configuração atual
-- Servidor: 51.222.193.109:7777
-- Redes: @gtasaogoncalo
-- Discord: não incluído
-- Tema: vermelho/preto
-- Logo: SGNT fornecida pelo proprietário do servidor
+## O que mudou
+- Visual em tela cheia usando a arte oficial SGNT como fundo.
+- IP/porta continuam fixos no código e **não aparecem na interface**.
+- Status automático `ONLINE/OFFLINE`.
+- Contador de jogadores `online/máximo`, no estilo de launcher de servidor.
+- Sem botão gigante de atualizar: toque no próprio status para consultar novamente.
+- Campo de nick salvo automaticamente.
+- Botão único **JOGAR**.
+- Nome instalado: **GTA SGNT RJ**.
+- Ícone do aplicativo usando a logo SGNT.
+- Instagram/TikTok/YouTube discretos no rodapé.
 
-## V1
-A V1 implementa:
-- tela própria SGNT;
-- nick persistente;
-- consulta SA:MP UDP para status e contagem de jogadores;
-- servidor único/fixo;
-- links sociais;
-- botão JOGAR preparado para integração com o cliente-base.
+## Servidor interno
+`51.222.193.109:7777`
 
-## Importante
-Este projeto não inclui arquivos proprietários do GTA San Andreas nem distribui os binários internos do Eagle Launcher.
-A integração final com o cliente do jogo deve usar um cliente que o responsável pelo projeto tenha direito de distribuir.
+Esse endereço não é exibido para o jogador.
 
-## Build
-Abra no Android Studio com JDK 17 e SDK 35 e execute `assembleRelease`/`assembleDebug`.
-Também há um workflow do GitHub Actions em `.github/workflows/build-apk.yml`.
+## Compilar no GitHub
+O workflow `.github/workflows/build-apk.yml` já está incluído. Envie/substitua os arquivos no repositório e abra **Actions > Gerar/Build SGNT Launcher APK > Run workflow**.
+
+O APK sai no artefato `GTA-SGNT-RJ-Launcher`.
+
+## Cliente do jogo
+Nesta V2 o botão JOGAR ainda usa a ponte temporária para o cliente Eagle quando instalado. O próximo passo é substituir essa ponte pela Activity do cliente próprio SGNT/SA-MP dentro do mesmo projeto.
