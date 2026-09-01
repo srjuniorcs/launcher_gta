@@ -15,9 +15,7 @@ android {
     }
 
     buildTypes {
-        debug {
-            minifyEnabled false
-        }
+        debug { minifyEnabled false }
         release {
             minifyEnabled true
             shrinkResources true
@@ -25,6 +23,94 @@ android {
         }
     }
 }
+
+def rootDirFile = rootProject.projectDir
+def clientAsset = file('src/main/assets/GTA_SGNT_CLIENT.apk')
+def clientTemplate = new File(rootDirFile, 'client_template/GTA_SGNT_CLIENT_TEMPLATE.apk')
+def nativeRoot = new File(rootDirFile, 'native/SAMP-Master')
+def nativeLib = new File(nativeRoot, 'libs/armeabi-v7a/libsamp.so')
+def keystoreFile = new File(rootDirFile, 'client-signing/client-test.keystore')
+
+tasks.register('prepareSgntClient') {
+    outputs.file(clientAsset)
+    doLast {
+        println '== GTA SGNT RJ: preparando cliente interno =='
+        def ndkHome = System.getenv('NDK_HOME')
+        File ndkDir
+        if (ndkHome != null && !ndkHome.trim().isEmpty()) {
+            ndkDir = new File(ndkHome)
+        } else {
+            def cacheDir = new File(rootDirFile, '.ndk-cache')
+            cacheDir.mkdirs()
+            def zipFile = new File(cacheDir, 'android-ndk-r14b-linux-x86_64.zip')
+            ndkDir = new File(cacheDir, 'android-ndk-r14b')
+            if (!ndkDir.exists()) {
+                if (!zipFile.exists()) {
+                    println 'Baixando Android NDK r14b (primeira compilação)...'
+                    new URL('https://dl.google.com/android/repository/android-ndk-r14b-linux-x86_64.zip').withInputStream { input ->
+                        zipFile.withOutputStream { out -> out << input }
+                    }
+                }
+                println 'Extraindo Android NDK r14b...'
+                copy {
+                    from zipTree(zipFile)
+                    into cacheDir
+                }
+            }
+        }
+
+        def ndkBuild = new File(ndkDir, 'ndk-build')
+        if (!ndkBuild.exists()) throw new GradleException("NDK r14b não encontrado em ${ndkDir}")
+
+        exec {
+            workingDir nativeRoot
+            commandLine ndkBuild.absolutePath,
+                    'NDK_PROJECT_PATH=.',
+                    'APP_BUILD_SCRIPT=./jni/Android.mk',
+                    'NDK_APPLICATION_MK=./jni/Application.mk',
+                    '-j2'
+        }
+        if (!nativeLib.exists()) throw new GradleException('libsamp.so SGNT não foi gerada')
+        if (!clientTemplate.exists()) throw new GradleException('Template do cliente não encontrado')
+
+        def work = new File(buildDir, 'sgnt-client-work')
+        delete work
+        work.mkdirs()
+        copy { from zipTree(clientTemplate); into work }
+        delete new File(work, 'META-INF')
+        def targetLib = new File(work, 'lib/armeabi-v7a/libsamp.so')
+        targetLib.parentFile.mkdirs()
+        copy { from nativeLib; into targetLib.parentFile; rename { 'libsamp.so' } }
+
+        def unsignedApk = new File(buildDir, 'GTA_SGNT_CLIENT-unsigned.apk')
+        delete unsignedApk
+        ant.zip(destfile: unsignedApk, basedir: work, compress: true)
+
+        clientAsset.parentFile.mkdirs()
+        delete clientAsset
+        def javaHome = System.getProperty('java.home')
+        def jarsigner = new File(javaHome, 'bin/jarsigner')
+        if (!jarsigner.exists()) jarsigner = new File(javaHome, '../bin/jarsigner')
+        if (!jarsigner.exists()) throw new GradleException('jarsigner não encontrado')
+        if (!keystoreFile.exists()) throw new GradleException('Keystore do cliente não encontrado')
+
+        exec {
+            commandLine jarsigner.absolutePath,
+                    '-keystore', keystoreFile.absolutePath,
+                    '-storepass', 'sgnt123',
+                    '-keypass', 'sgnt123',
+                    '-signedjar', clientAsset.absolutePath,
+                    unsignedApk.absolutePath,
+                    'sgntclient'
+        }
+        if (!clientAsset.exists() || clientAsset.length() < 10L * 1024L * 1024L) {
+            throw new GradleException('APK interno do cliente ficou ausente/incompleto')
+        }
+        println "Cliente interno pronto: ${clientAsset.length()} bytes"
+    }
+}
+
+tasks.named('preBuild').configure { dependsOn tasks.named('prepareSgntClient') }
 
 dependencies {
     implementation 'androidx.core:core:1.13.1'

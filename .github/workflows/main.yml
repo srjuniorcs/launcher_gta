@@ -1,38 +1,53 @@
-name: Gerar APK GTA SGNT
+name: Build GTA SGNT RJ 1.0.0
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main, master ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Baixar projeto
         uses: actions/checkout@v4
 
-      - name: Configurar Java 17
+      - name: Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Configurar Android SDK
+      - name: Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Configurar Gradle
+      - name: Instalar SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: '8.11.1'
 
-      - name: Compilar APK
-        run: gradle assembleDebug
+      - name: NDK r14b
+        run: |
+          curl -L --retry 3 -o /tmp/android-ndk-r14b.zip https://dl.google.com/android/repository/android-ndk-r14b-linux-x86_64.zip
+          unzip -q /tmp/android-ndk-r14b.zip -d /tmp
+          echo "NDK_HOME=/tmp/android-ndk-r14b" >> "$GITHUB_ENV"
 
-      - name: Salvar APK
+      - name: Compilar APK GTA SGNT RJ
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Verificar cliente interno no APK
+        run: |
+          unzip -l app/build/outputs/apk/debug/app-debug.apk | grep "assets/GTA_SGNT_CLIENT.apk"
+          unzip -l app/build/outputs/apk/debug/app-debug.apk | grep "assets/sgnt_samp_cache.zip"
+
+      - name: Renomear APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk GTA_SGNT_RJ_1.0.0.apk
+
+      - name: Enviar APK
         uses: actions/upload-artifact@v4
         with:
-          name: GTA-SGNT-RJ-Launcher
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: GTA-SGNT-RJ-1.0.0
+          path: GTA_SGNT_RJ_1.0.0.apk

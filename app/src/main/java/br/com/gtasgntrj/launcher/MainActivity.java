@@ -71,6 +71,7 @@ public class MainActivity extends Activity {
     private volatile boolean preparing = false;
     private boolean pendingPrepareAfterPermission = false;
     private boolean pendingPrepareAfterInstall = false;
+    private boolean pendingPrepareAfterUnknownSources = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,6 +93,11 @@ public class MainActivity extends Activity {
         if (serverStatusText != null) refreshServer();
         if (pendingPrepareAfterPermission && hasFileAccess()) {
             pendingPrepareAfterPermission = false;
+            startPrepareFlow();
+            return;
+        }
+        if (pendingPrepareAfterUnknownSources && canInstallPackages()) {
+            pendingPrepareAfterUnknownSources = false;
             startPrepareFlow();
             return;
         }
@@ -238,6 +244,10 @@ public class MainActivity extends Activity {
             return;
         }
         if (!isClientInstalled()) {
+            if (!canInstallPackages()) {
+                requestInstallPackagesPermission();
+                return;
+            }
             installEmbeddedClient();
             return;
         }
@@ -288,6 +298,28 @@ public class MainActivity extends Activity {
         }
     }
 
+
+    private boolean canInstallPackages() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            return getPackageManager().canRequestPackageInstalls();
+        }
+        return true;
+    }
+
+    private void requestInstallPackagesPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        pendingPrepareAfterUnknownSources = true;
+        try {
+            Intent i = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + getPackageName()));
+            startActivity(i);
+            Toast.makeText(this, "Ative 'Permitir desta fonte' e volte ao GTA SGNT RJ.", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            pendingPrepareAfterUnknownSources = false;
+            showError("Não foi possível abrir a permissão de instalação: " + e.getMessage());
+        }
+    }
+
     private boolean isClientInstalled() {
         try {
             getPackageManager().getPackageInfo(GAME_PACKAGE, 0);
@@ -307,16 +339,18 @@ public class MainActivity extends Activity {
             try {
                 File apk = new File(getCacheDir(), "GTA_SGNT_CLIENT.apk");
                 copyAsset("GTA_SGNT_CLIENT.apk", apk);
+                if (!apk.isFile() || apk.length() < 10L * 1024L * 1024L) {
+                    throw new Exception("cliente interno ausente ou incompleto (" + apk.length() + " bytes)");
+                }
                 runOnUiThread(() -> {
                     try {
                         Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", apk);
-                        Intent install = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-                        install.setData(uri);
-                        install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        install.putExtra(Intent.EXTRA_RETURN_RESULT, false);
+                        Intent install = new Intent(Intent.ACTION_VIEW);
+                        install.setDataAndType(uri, "application/vnd.android.package-archive");
+                        install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
                         pendingPrepareAfterInstall = true;
                         preparing = false;
-                        progressText.setText("Confirme a instalação do componente GTA SGNT RJ e volte.");
+                        progressText.setText("Instale o componente GTA SGNT RJ e depois volte ao launcher.");
                         actionButton.setText("AGUARDANDO INSTALAÇÃO...");
                         startActivity(install);
                     } catch (Exception e) {
